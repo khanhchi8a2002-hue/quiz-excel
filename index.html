@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Báo cáo_Q3.xlsx - Excel</title>
+<style>
+:root{--g:#217346;--line:#d4d4d4;--hd:#f3f3f3;--bg:#fff;--tx:#222;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:13px Calibri,"Segoe UI",Arial,sans-serif;display:flex;flex-direction:column;height:100vh}
+.title{background:var(--g);color:#fff;padding:5px 12px;font-size:12px;display:flex;justify-content:space-between}
+.tabs{background:var(--g);color:#fff;display:flex;gap:16px;padding:0 12px;font-size:12px;overflow-x:auto;white-space:nowrap}
+.tabs span{padding:5px 2px}.tabs .on{background:#f3f3f3;color:var(--g);padding:5px 10px}
+.rib{background:#f3f3f3;border-bottom:1px solid var(--line);padding:6px 12px;color:#555;font-size:11px;white-space:nowrap;overflow:hidden}
+.fx{display:flex;border-bottom:1px solid var(--line);font-size:12px}
+.fx b{width:60px;padding:3px 8px;border-right:1px solid var(--line)}.fx i{padding:3px 10px;color:#777;flex:1;overflow:hidden;white-space:nowrap}
+.wrap{flex:1;overflow:auto}
+table{border-collapse:collapse;table-layout:fixed;width:max(100%,900px)}
+th,td{border:1px solid var(--line);height:21px;padding:0 5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:400}
+thead th{background:var(--hd);position:sticky;top:0;color:#444;z-index:1}
+tbody th{background:var(--hd);width:36px;color:#444;text-align:center}
+td.h{background:#e2efda;font-weight:700}td.ok{background:#c6efce;color:#006100;font-weight:700}td.bad{background:#ffc7ce;color:#9c0006}
+td.me{background:#fff2cc;font-weight:700}td.sel{background:#ddebf7}
+td.o{cursor:pointer}td.o:hover{background:#ddebf7}
+td.b{background:var(--g);color:#fff;text-align:center;cursor:pointer;font-weight:700}
+input{font:inherit;width:100%;border:2px solid var(--g);height:19px;padding:0 3px;outline:0}
+.sheets{border-top:1px solid var(--line);background:var(--hd);padding:3px 12px;font-size:12px;display:flex;gap:14px}
+.sheets .on{background:#fff;color:var(--g);font-weight:700;padding:1px 10px;border-bottom:2px solid var(--g)}
+#fake{position:fixed;inset:0;background:#fff;display:none;z-index:9;overflow:auto;padding-top:env(safe-area-inset-top,0px)}
+</style></head><body>
+<div class="title"><span>Báo cáo_Q3.xlsx - Excel</span><span>—  □  ✕</span></div>
+<div class="tabs"><span>Tệp</span><span class="on">Trang chủ</span><span>Chèn</span><span>Bố cục</span><span>Công thức</span><span>Dữ liệu</span><span>Xem</span></div>
+<div class="rib">Dán ▾ &nbsp;|&nbsp; Calibri 11 &nbsp; <b>B</b> <i>I</i> U &nbsp;|&nbsp; ≡ ≡ ≡ &nbsp;|&nbsp; Chung ▾ &nbsp;|&nbsp; Σ Tự động tính tổng</div>
+<div class="fx"><b>B2</b><i>=SUM(C2:C40)/COUNT(C2:C40)</i></div>
+<div class="wrap"><table id="t"></table></div>
+<div class="sheets"><span class="on">Sheet1</span><span>Sheet2</span><span>Tổng hợp</span><span>＋</span></div>
+<div id="fake"></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let id;try{id=localStorage.getItem('qid');if(!id){id='p'+Math.random().toString(36).slice(2,12);localStorage.setItem('qid',id)}}catch(e){id='p'+Math.random().toString(36).slice(2,12)}
+let S=null,off=0,draft='',lastKey='',lastQ=-1,err=false;
+try{draft=localStorage.getItem('qn')||''}catch(e){}
+const C=(h,c='',a='')=>({h,c,a});
+const left=()=>S?Math.max(0,(S.game.startAt+S.game.limit*1000-(Date.now()+off))/1000):0;
+async function poll(){
+  try{const r=await fetch('/api/state?id='+id);S=await r.json();off=S.now-Date.now();err=false;}catch(e){err=true}
+  const k=JSON.stringify(S&&{...S,now:0})+err;
+  if(S&&S.game.q!==lastQ){lastQ=S.game.q;if(S.game.phase==='play')draft='';}
+  if(k!==lastKey){lastKey=k;render();}
+}
+async function post(p,b){try{await fetch('/api/'+p,{method:'POST',body:JSON.stringify({id,...b})})}catch(e){}poll();}
+function render(){
+  const act=document.activeElement,foc=act&&act.id==='in',pos=foc?act.selectionStart:0;
+  const R=[],add=(...c)=>R.push(c);
+  if(err||!S)add(C('Lỗi','h'),'Mất kết nối, đang thử lại...');
+  else{
+    const g=S.game,bd=S.players,N=bd.length,host=g.host===id,me=S.me;
+    const lb=n=>bd.slice(0,n).forEach((p,i)=>add(i+1,esc(p.name),p.total,p.id===id?C('','me'):''));
+    if(!me){
+      add(C('Họ tên','h'),'Nhập tên hiển thị của bạn:');
+      add('',C(`<input id="in" maxlength="20" value="${esc(draft)}" placeholder="Ví dụ: Lan - Kế toán">`),C('Tham gia','b','data-a="join"'));
+    }else if(g.phase==='lobby'){
+      add(C('STT','h'),C('Nhân viên','h'),C('Trạng thái','h'));
+      bd.forEach((p,i)=>add(i+1,esc(p.name),'Sẵn sàng'));
+      add('');add('',`Đang có ${N} người tham gia`,C('Bắt đầu','b','data-a="start"'));
+    }else if(g.phase==='play'){
+      const q=S.q,over=S.over,mine=me.answers[g.q];
+      add(C('Câu','h'),`<b>${g.q+1}/${g.total}.</b> ${esc(q.q)}`);
+      if(q.t==='mc')q.o.forEach((o,i)=>{
+        let c='o';
+        if(over)c=i===S.correct?'ok':(mine&&mine.a===i?'bad':'');
+        else if(mine&&mine.a===i)c='sel';
+        add(C('ABCD'[i],'h'),C(esc(o),c,`data-a="opt" data-i="${i}"`));
+      });
+      else if(over){add(C('Đáp án','h'),C(esc(S.correct),'ok'));add(C('Bạn trả lời','h'),mine?esc(mine.a):'(bỏ trống)');}
+      else if(mine)add(C('Đã nhập','h'),esc(mine.a));
+      else add(C('Nhập','h'),C(`<input id="in" value="${esc(draft)}" placeholder="Điền đáp án...">`),C('Gửi','b','data-a="fill"'));
+      add('');
+      add(C('Thời gian','h'),over?'Hết giờ':`<span id="tm">${Math.ceil(left())}</span> giây`);
+      add(C('Đã trả lời','h'),`${bd.filter(p=>p.answered).length}/${N}`);
+      if(over){
+        add(C('Điểm câu','h'),`+${mine?mine.pts:0}`);add(C('Tổng điểm','h'),me.total);
+        add('');add(C('Hạng','h'),C('Nhân viên','h'),C('Điểm','h'));lb(5);
+        add('',host?C(g.q+1<g.total?'Câu tiếp theo ▶':'Xem tổng kết ▶','b','data-a="next"'):'Chờ người dẫn chương trình chuyển câu...');
+      }
+    }else{
+      add('',C('<b>TỔNG KẾT - BẢNG XẾP HẠNG</b>'));
+      add(C('Hạng','h'),C('Nhân viên','h'),C('Điểm','h'));
+      bd.forEach((p,i)=>add(['🥇','🥈','🥉'][i]||i+1,esc(p.name),p.total,p.id===id?C('','me'):''));
+      add('');if(host)add('',C('Ván mới','b','data-a="reset"'));
+    }
+  }
+  while(R.length<32)R.push([]);
+  let h='<colgroup><col style="width:36px"><col style="width:100px"><col style="width:560px"><col style="width:110px"><col><col><col></colgroup><thead><tr><th></th>'+'ABCDEF'.split('').map(x=>`<th>${x}</th>`).join('')+'</tr></thead><tbody>';
+  R.forEach((r,i)=>{
+    const meRow=r.some(x=>x&&x.c==='me');
+    h+=`<tr><th>${i+1}</th>`;
+    for(let k=0;k<6;k++){
+      let x=r[k];if(x===undefined||x==='')x=C('');else if(typeof x!=='object')x=C(x);
+      h+=`<td class="${x.c}${meRow&&k<3?' me':''}" ${x.a}>${x.h}</td>`;
+    }
+    h+='</tr>';
+  });
+  $('#t').innerHTML=h+'</tbody>';
+  const i=$('#in');if(i&&foc){i.focus();i.setSelectionRange(pos,pos);}
+}
+function answer(v){if(S&&!S.over&&left()>0)post('answer',{v});}
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-a]');if(!el)return;
+  const a=el.dataset.a;
+  if(a==='join'){const n=draft.trim();if(n){try{localStorage.setItem('qn',n)}catch(e){}post('join',{name:n});}}
+  if(a==='start')post('start',{});
+  if(a==='opt')answer(+el.dataset.i);
+  if(a==='fill'){const v=$('#in').value.trim();if(v)answer(v);}
+  if(a==='next')post('next',{});
+  if(a==='reset')post('reset',{});
+});
+document.addEventListener('input',e=>{if(e.target.id==='in')draft=e.target.value});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.target.id==='in'){const v=e.target.value.trim();if(!v)return;
+    if(S&&!S.me){try{localStorage.setItem('qn',v)}catch(x){}post('join',{name:v});}else answer(v);}
+  if(e.key==='Escape')togglefake();
+});
+function togglefake(){
+  const f=$('#fake');
+  if(f.style.display==='block'){f.style.display='none';return;}
+  let h='<table><tr><th>Tháng</th><th>Doanh thu</th><th>Chi phí</th><th>Lợi nhuận</th></tr>';
+  for(let i=1;i<=30;i++){const a=100+i*37%90,b=60+i*29%50;h+=`<tr><td>T${i}</td><td>${a*1000}</td><td>${b*1000}</td><td>${(a-b)*1000}</td></tr>`;}
+  f.innerHTML=h+'</table><p style="padding:8px;color:#888">Nhấn Esc để quay lại</p>';f.style.display='block';
+}
+setInterval(()=>{
+  if(!S||S.game.phase!=='play'||S.over)return;
+  const tm=$('#tm');if(tm)tm.textContent=Math.ceil(left());
+  if(left()<=0)poll();
+},400);
+poll();setInterval(poll,1000);
+</script></body></html>
